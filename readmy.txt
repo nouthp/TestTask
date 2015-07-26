@@ -1,0 +1,3 @@
+Use MySql DB
+For create table execute DBscript.sql
+For connect to DB you have to edit ..\TestTask\src\main\resources\config.properties
