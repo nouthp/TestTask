@@ -7,7 +7,7 @@ import java.sql.SQLException;
 import java.util.Properties;
 
 import my.home.testtask.entity.Entity;
-
+import my.home.testtask.exceptions.NoDBTestTaskException;
 
 public class DaoFactory {
 
@@ -19,11 +19,12 @@ public class DaoFactory {
 	private static String driver;
 	private static Connection connection;
 
-	private DaoFactory() throws Exception {
+	private DaoFactory() throws NoDBTestTaskException {
+		String configFileName = "config.properties";
+		
 		try {
-
 			Properties prop = new Properties();
-			prop.load(DaoFactory.class.getClassLoader().getResourceAsStream("config.properties"));
+			prop.load(DaoFactory.class.getClassLoader().getResourceAsStream(configFileName));
 
 			user = prop.getProperty("user");
 			password = prop.getProperty("password");
@@ -32,35 +33,38 @@ public class DaoFactory {
 
 			Class.forName(driver);
 			connection = DriverManager.getConnection(url, user, password);
+		} catch (SQLException e) {
+			throw new NoDBTestTaskException("Can not get DB connection");
+		} catch (ClassNotFoundException e) {
+			throw new NoDBTestTaskException("Can not find DB driver");
 		} catch (Exception e) {
-			throw new Exception("Can't create dao factory instance");
+			String configFilePath = DaoFactory.class.getClassLoader().getResource("/").toString() + configFileName;
+			throw new NoDBTestTaskException("Can not find " + configFilePath);
 		}
+
 	}
 
-	public Dao<? extends Entity> createEntity(Class<? extends Dao<? extends Entity>> classDao) throws Exception {
+	public Dao<? extends Entity> createEntity(Class<? extends Dao<? extends Entity>> classDao)
+			throws NoDBTestTaskException {
 
 		Dao<? extends Entity> entityInstance = null;
-		
+
 		try {
-			Constructor<? extends Dao<? extends Entity>> constructor = classDao.getConstructor(java.sql.Connection.class);
+			Constructor<? extends Dao<? extends Entity>> constructor = classDao
+					.getConstructor(java.sql.Connection.class);
 			entityInstance = (Dao<? extends Entity>) constructor.newInstance(connection);
 		} catch (Exception e) {
-			throw new Exception("Undefined class name " + classDao.getName());
+			throw new NoDBTestTaskException("Undefined class name " + classDao.getName());
 		}
 
 		return entityInstance;
 	}
 
-	synchronized public static DaoFactory getInstance() throws Exception {
+	synchronized public static DaoFactory getInstance() throws NoDBTestTaskException {
 		if (instance != null) {
 			return instance;
 		}
-
-		try {
-			instance = new DaoFactory();
-		} catch (SQLException e) {
-			throw new Exception("Undefined class driver connection " + driver);
-		}
+		instance = new DaoFactory();
 
 		return instance;
 	}
